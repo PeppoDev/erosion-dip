@@ -14,13 +14,29 @@ def binaryzation(gray: np.array) -> np.array:
     return (127 < gray) & (gray <= 255)
 
 
-def erosion(image: np.array, kernel: np.array) -> np.array:
+def backToRgb(binary: np.array) -> np.array:
+    # map like conditional conversion
+    # limiarization with threshold at the half
+    return (binary != 0) * 255
+
+
+def imageHandle(image: np.array) -> np.array:
+    dimension = len(image.shape)
+    image = rgbTogray(image) if dimension == 3 else image
+    image = binaryzation(image)
+    return image
+
+
+def erode(image: np.array, kernel: np.array, backToRgb: bool = False) -> np.array:
+    original = np.array(image)
+    image = imageHandle(image)
+
     blank_image = np.zeros_like(image)
     output: np.array = blank_image
 
     image_padded = np.zeros(
         (image.shape[0] + kernel.shape[0] - 1,
-         image.shape[1] + kernel.shape[1] - 1)
+            image.shape[1] + kernel.shape[1] - 1)
     )
 
     # Copy image to padded image
@@ -36,28 +52,9 @@ def erosion(image: np.array, kernel: np.array) -> np.array:
 
             output[x, y] = int(np.count_nonzero(summation)
                                == np.count_nonzero(kernel))
+
+    if backToRgb:
+        output = np.array(Image.fromarray(output).convert("RGB"))
+        output = np.where(output[:, :, :] == (0, 0, 0), output, original)
+
     return output
-
-
-# kernel to be applied
-structuring_element = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]])
-
-if __name__ == "__main__":
-    # read original image
-    image = Image.open(r"./assets/example.jpg")
-
-    filename = image.filename.split('/')[-1]
-
-    image = np.array(image)
-
-    dimension = len(image.shape)
-
-    image = rgbTogray(image) if dimension == 3 else image
-
-    image = binaryzation(image)
-
-    # # Apply erosion operation to a binary image
-    output = erosion(image, structuring_element)
-    # # Save the output image
-    pil_img = Image.fromarray(output)
-    pil_img.save(r"./outputs/eroded{}".format(filename))
